@@ -18,7 +18,7 @@
 //! ```
 //! # use secret_integers::*;
 //! let x = U32::classify(1u32);
-//! let y = U32::classify(2u32);
+//! let y : U32 = 2u32.into();
 //! assert_eq!(U32::declassify(x + y), 3);
 //! ```
 //!
@@ -27,7 +27,7 @@
 //! ```compile_fail
 //! # use secret_integers::*;
 //! let x = U32::classify(4u32);
-//! let y = U32::classify(2u32);
+//! let y : U32 = 2u32.into();
 //! assert_eq!(U32::declassify(x / y), 2);
 //! ```
 //!
@@ -73,7 +73,7 @@ use std::num::Wrapping;
 use std::ops::*;
 
 macro_rules! define_wrapping_op {
-    ($name:ident, $op:tt, $op_name:ident, $func_op:ident, $assign_name:ident, $assign_func:ident) => {
+    ($name:ident, $op:tt, $op_name:ident, $func_op:ident, $assign_name:ident, $assign_func:ident, $checked_func_op:ident) => {
 
         /// **Warning:** has wrapping semantics.
         impl $op_name for $name {
@@ -83,6 +83,18 @@ macro_rules! define_wrapping_op {
                 let $name(i1) = self;
                 let $name(i2) = rhs;
                 $name((Wrapping(i1) $op Wrapping(i2)).0)
+            }
+        }
+
+        impl $name {
+            /// **Warning:** panics when overflow.
+            pub fn $checked_func_op(self, rhs: Self) -> Self {
+                let $name(i1) = self;
+                let $name(i2) = rhs;
+                match i1.$checked_func_op(i2) {
+                    None => panic!("Secret integer {} overflow!", stringify!($func_op)),
+                    Some(r) => $name(r)
+                }
             }
         }
 
@@ -160,10 +172,12 @@ macro_rules! define_secret_integer {
                 $name(x.into())
             }
 
+
             /// **Warning:** use with caution, breaks the constant-time guarantee.
             pub fn declassify(self) -> $repr {
                 self.0
             }
+
 
             pub fn zero() -> Self {
                 $name(0)
@@ -172,11 +186,21 @@ macro_rules! define_secret_integer {
             pub fn one() -> Self {
                 $name(1)
             }
+
+            pub fn ones() -> Self {
+                !Self::zero()
+            }
         }
 
-        define_wrapping_op!($name, +, Add, add, AddAssign, add_assign);
-        define_wrapping_op!($name, -, Sub, sub, SubAssign, sub_assign);
-        define_wrapping_op!($name, *, Mul, mul, MulAssign, mul_assign);
+        impl From<$repr> for $name {
+            fn from(x:$repr) -> Self {
+                Self::classify(x)
+            }
+        }
+
+        define_wrapping_op!($name, +, Add, add, AddAssign, add_assign, checked_add);
+        define_wrapping_op!($name, -, Sub, sub, SubAssign, sub_assign, checked_sub);
+        define_wrapping_op!($name, *, Mul, mul, MulAssign, mul_assign, checked_mul);
 
         define_shift!($name, <<, Shl, shl, ShlAssign, shl_assign);
         define_shift!($name, >>, Shr, shr, ShrAssign, shr_assign);
@@ -196,6 +220,8 @@ macro_rules! define_secret_integer {
         define_bitwise_op!($name, &, BitAnd, bitand, BitAndAssign, bitand_assign);
         define_bitwise_op!($name, |, BitOr, bitor, BitOrAssign, bitor_assign);
         define_bitwise_op!($name, ^, BitXor, bitxor, BitXorAssign, bitxor_assign);
+
+        /// `Not` has bitwise semantics for integers
         define_unary_op!($name, !, Not, not);
     }
 }
@@ -212,11 +238,13 @@ macro_rules! define_secret_unsigned_integer {
                 $name((Wrapping(!i1) + Wrapping(1)).0)
             }
         }
+
+        /// # Constant-time comparison operators
         impl $name {
             /// Produces a new integer which is all ones if the two arguments are equal and
             /// all zeroes otherwise. With inspiration from
             /// [Wireguard](https://git.zx2c4.com/WireGuard/commit/src/crypto/curve25519-hacl64.h?id=2e60bb395c1f589a398ec606d611132ef9ef764b).
-            pub fn eq_mask(self, rhs: Self) -> Self {
+            pub fn comp_eq(self, rhs: Self) -> Self {
                 let a = self; let b = rhs;
                 let x = a | b;
                 let minus_x = - x;
@@ -226,10 +254,16 @@ macro_rules! define_secret_unsigned_integer {
                 c
             }
 
+            /// Produces a new integer which is all ones if the first argument is different from
+            /// the second argument, and all zeroes otherwise.
+            pub fn comp_ne(self, rhs:Self) -> Self {
+                !self.comp_eq(rhs) ^ Self::ones()
+            }
+
             /// Produces a new integer which is all ones if the first argument is greater than or
             /// equal to the second argument, and all zeroes otherwise. With inspiration from
             /// [WireGuard](https://git.zx2c4.com/WireGuard/commit/src/crypto/curve25519-hacl64.h?id=0a483a9b431d87eca1b275463c632f8d5551978a).
-            pub fn gte_mask(self, rhs: Self) -> Self {
+            pub fn comp_gte(self, rhs: Self) -> Self {
                 let x = self; let y = rhs;
                 let x_xor_y = x | y;
                 let x_sub_y = x - y;
@@ -240,6 +274,25 @@ macro_rules! define_secret_unsigned_integer {
                 let c = x_xor_q_ - Self::one();
                 c
             }
+
+            /// Produces a new integer which is all ones if the first argumentis strictly greater
+            /// than the second argument, and all zeroes otherwise.
+            pub fn comp_gt(self, rhs:Self) -> Self {
+                self.comp_gte(rhs) ^ self.comp_eq(rhs)
+            }
+
+            /// Produces a new integer which is all ones if the first argumentis less than or
+            /// equal to the second argument, and all zeroes otherwise.
+            pub fn comp_lte(self, rhs:Self) -> Self {
+                !self.comp_gt(rhs)
+            }
+
+            /// Produces a new integer which is all ones if the first argumentis strictly less than
+            /// the second argument, and all zeroes otherwise.
+            pub fn comp_lt(self, rhs:Self) -> Self {
+                !self.comp_gte(rhs)
+            }
+
         }
     };
 }
@@ -262,3 +315,100 @@ define_secret_signed_integer!(I16, i16, 16);
 define_secret_signed_integer!(I32, i32, 32);
 define_secret_signed_integer!(I64, i64, 64);
 define_secret_signed_integer!(I128, i128, 128);
+
+macro_rules! define_safe_casting {
+    ($from:ident, $to:ident, $to_repr:ident) => {
+        impl From<$from> for $to {
+            fn from(x:$from) -> $to {
+                $to(x.0 as $to_repr)
+            }
+        }
+    }
+}
+
+macro_rules! define_unsafe_casting {
+    ($from:ident, $to:ident, $to_repr:ident) => {
+        /// **Warning:** wrapping semantics.
+        impl From<$from> for $to {
+            fn from(x:$from) -> $to {
+                $to(x.0 as $to_repr)
+            }
+        }
+    }
+}
+
+macro_rules! define_signed_unsigned_casting {
+    ($unsigned:ident, $unsiged_repr:ident, $signed:ident, $signed_repr:ident) => {
+        /// **Warning:** wrapping semantics.
+        impl From<$unsigned> for $signed {
+            fn from(x:$unsigned) -> $signed {
+                $signed(x.0 as $signed_repr)
+            }
+        }
+    }
+}
+
+// Casting
+
+// U128 <-> Un{n < 128}
+define_safe_casting!(U8, U128, u128);
+define_unsafe_casting!(U128, U8, u8);
+define_safe_casting!(U16, U128, u128);
+define_unsafe_casting!(U128, U16, u16);
+define_safe_casting!(U32, U128, u128);
+define_unsafe_casting!(U128, U32, u32);
+define_safe_casting!(U64, U128, u128);
+define_unsafe_casting!(U128, U64, u64);
+
+// U64 <-> Un{n < 64}
+define_safe_casting!(U8, U64, u64);
+define_unsafe_casting!(U64, U8, u8);
+define_safe_casting!(U16, U64, u64);
+define_unsafe_casting!(U64, U16, u16);
+define_safe_casting!(U32, U64, u64);
+define_unsafe_casting!(U64, U32, u32);
+
+// U32 <-> Un{n < 32}
+define_safe_casting!(U8, U32, u32);
+define_unsafe_casting!(U32, U8, u8);
+define_safe_casting!(U16, U32, u32);
+define_unsafe_casting!(U32, U16, u16);
+
+// U16 <-> Un{n < 16}
+define_safe_casting!(U8, U16, u16);
+define_unsafe_casting!(U16, U8, u8);
+
+// I128 <-> In{n < 128}
+define_safe_casting!(I8, I128, i128);
+define_unsafe_casting!(I128, I8, i8);
+define_safe_casting!(I16, I128, i128);
+define_unsafe_casting!(I128, I16, i16);
+define_safe_casting!(I32, I128, i128);
+define_unsafe_casting!(I128, I32, i32);
+define_safe_casting!(I64, I128, i128);
+define_unsafe_casting!(I128, I64, i64);
+
+// I64 <-> In{n < 64}
+define_safe_casting!(I8, I64, i64);
+define_unsafe_casting!(I64, I8, i8);
+define_safe_casting!(I16, I64, i64);
+define_unsafe_casting!(I64, I16, i16);
+define_safe_casting!(I32, I64, i64);
+define_unsafe_casting!(I64, I32, i32);
+
+// I32 <-> In{n < 32}
+define_safe_casting!(I8, I32, i32);
+define_unsafe_casting!(I32, I8, i8);
+define_safe_casting!(I16, I32, i32);
+define_unsafe_casting!(I32, I16, i16);
+
+// I16 <-> In{n < 16}
+define_safe_casting!(I8, I16, i16);
+define_unsafe_casting!(I16, I8, i8);
+
+// Unsigned <-> signed
+define_signed_unsigned_casting!(U128, u128, I128, i128);
+define_signed_unsigned_casting!(U64, u64, I64, i64);
+define_signed_unsigned_casting!(U32, u32, I32, i32);
+define_signed_unsigned_casting!(U16, u16, I16, i16);
+define_signed_unsigned_casting!(U8, u8, I8, i8);
