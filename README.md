@@ -12,3 +12,25 @@ To build theses examples, use
 
     cargo build --example dalek
     cargo build --example chacha20
+
+However, if you try:
+
+    cargo build --example biguint
+
+You will get the following error message:
+
+```
+error[E0599]: no method named `leading_zeros` found for type `&secret_integers::U32` in the current scope
+--> examples/biguint.rs:24:46
+ |
+24 |        let zeros = self.data.last().unwrap().leading_zeros();
+ |                                              ^^^^^^^^^^^^^
+
+error[E0369]: binary operation `!=` cannot be applied to type `secret_integers::U32`
+--> examples/biguint.rs:48:11
+ |
+48 |     while r != 0 {
+ |           ^^^^^^
+ |
+ = note: an implementation of `std::cmp::PartialEq` might be missing for `secret_integers::U32`
+```
