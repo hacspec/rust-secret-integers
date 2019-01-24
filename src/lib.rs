@@ -19,7 +19,7 @@
 //! # use secret_integers::*;
 //! let x = U32::classify(1u32);
 //! let y : U32 = 2u32.into();
-//! assert_eq!(U32::declassify(x + y), 3);
+//! assert_eq!((x + y).declassify(), 3);
 //! ```
 //!
 //! Using an illegal operation will get you a compile-time error:
@@ -28,7 +28,7 @@
 //! # use secret_integers::*;
 //! let x = U32::classify(4u32);
 //! let y : U32 = 2u32.into();
-//! assert_eq!(U32::declassify(x / y), 2);
+//! assert_eq!((x / y).declassify(), 2);
 //! ```
 //!
 //! Since indexing arrays and vectors is only possible with `usize`, these secret integers also
@@ -43,6 +43,10 @@
 //!    }
 //! }
 //! ```
+//! See the [Dalek](https://github.com/denismerigoux/rust-secret-integers/tree/master/examples/dalek.rs)
+//! and [Chacha20](https://github.com/denismerigoux/rust-secret-integers/tree/master/examples/chacha20.rs)
+//! examples for more details on how to use this crate.
+//!
 //!
 //! # Const-compatibility
 //!
@@ -53,7 +57,8 @@
 //! const IV : [U32;2] = [U32::classify(0xbe6548u32),U32::classify(0xaec6d48u32)]
 //! ```
 //!
-//! For now, the solution is to map your const items with `classify` once you're inside a function:
+//! For now, the solution is to map your const items with `classify` once you're inside a function,
+//! or call `into`.
 //!
 //! ```
 //! # use secret_integers::*;
@@ -61,7 +66,7 @@
 //!
 //! fn start_cipher(plain: &mut Vec<U32>) {
 //!    for i in 0..plain.len() {
-//!      plain[i] |= plain[i] ^ U32::classify(IV[i]);
+//!      plain[i] |= plain[i] ^ IV[i].into();
 //!    }
 //! }
 //! ```
