@@ -72,8 +72,6 @@
 //! ```
 //!
 
-
-
 use std::num::Wrapping;
 use std::ops::*;
 
@@ -173,31 +171,35 @@ macro_rules! define_secret_integer {
         pub struct $name(pub(crate) $repr);
 
         impl $name {
+            #[inline]
             pub fn classify<T : Into<$repr>>(x: T) -> Self {
                 $name(x.into())
             }
 
-
+            #[inline]
             /// **Warning:** use with caution, breaks the constant-time guarantee.
             pub fn declassify(self) -> $repr {
                 self.0
             }
 
-
+            #[inline]
             pub fn zero() -> Self {
                 $name(0)
             }
 
+            #[inline]
             pub fn one() -> Self {
                 $name(1)
             }
 
+            #[inline]
             pub fn ones() -> Self {
                 !Self::zero()
             }
         }
 
         impl From<$repr> for $name {
+            #[inline]
             fn from(x:$repr) -> Self {
                 Self::classify(x)
             }
@@ -211,11 +213,13 @@ macro_rules! define_secret_integer {
         define_shift!($name, >>, Shr, shr, ShrAssign, shr_assign);
 
         impl $name {
+            #[inline]
             pub fn rotate_left(self, rotval:u32) -> Self {
                 let $name(i) = self;
                 $name(i.rotate_left(rotval))
             }
 
+            #[inline]
             pub fn rotate_right(self, rotval:u32) -> Self {
                 let $name(i) = self;
                 $name(i.rotate_right(rotval))
@@ -249,10 +253,12 @@ macro_rules! define_secret_unsigned_integer {
             /// Produces a new integer which is all ones if the two arguments are equal and
             /// all zeroes otherwise. With inspiration from
             /// [Wireguard](https://git.zx2c4.com/WireGuard/commit/src/crypto/curve25519-hacl64.h?id=2e60bb395c1f589a398ec606d611132ef9ef764b).
+            #[inline]
             pub fn comp_eq(self, rhs: Self) -> Self {
-                let a = self; let b = rhs;
+                let a = self;
+                let b = rhs;
                 let x = a | b;
-                let minus_x = - x;
+                let minus_x = -x;
                 let x_or_minus_x = x | minus_x;
                 let xnx = x_or_minus_x >> ($bits - 1);
                 let c = xnx - Self::one();
@@ -261,43 +267,48 @@ macro_rules! define_secret_unsigned_integer {
 
             /// Produces a new integer which is all ones if the first argument is different from
             /// the second argument, and all zeroes otherwise.
-            pub fn comp_ne(self, rhs:Self) -> Self {
+            #[inline]
+            pub fn comp_ne(self, rhs: Self) -> Self {
                 !self.comp_eq(rhs) ^ Self::ones()
             }
 
             /// Produces a new integer which is all ones if the first argument is greater than or
             /// equal to the second argument, and all zeroes otherwise. With inspiration from
             /// [WireGuard](https://git.zx2c4.com/WireGuard/commit/src/crypto/curve25519-hacl64.h?id=0a483a9b431d87eca1b275463c632f8d5551978a).
+            #[inline]
             pub fn comp_gte(self, rhs: Self) -> Self {
-                let x = self; let y = rhs;
+                let x = self;
+                let y = rhs;
                 let x_xor_y = x | y;
                 let x_sub_y = x - y;
                 let x_sub_y_xor_y = x_sub_y ^ y;
                 let q = x_xor_y ^ x_sub_y_xor_y;
                 let x_xor_q = x ^ q;
-                let x_xor_q_ = x_xor_q >> ($bits - 1 );
+                let x_xor_q_ = x_xor_q >> ($bits - 1);
                 let c = x_xor_q_ - Self::one();
                 c
             }
 
             /// Produces a new integer which is all ones if the first argumentis strictly greater
             /// than the second argument, and all zeroes otherwise.
-            pub fn comp_gt(self, rhs:Self) -> Self {
+            #[inline]
+            pub fn comp_gt(self, rhs: Self) -> Self {
                 self.comp_gte(rhs) ^ self.comp_eq(rhs)
             }
 
             /// Produces a new integer which is all ones if the first argumentis less than or
             /// equal to the second argument, and all zeroes otherwise.
-            pub fn comp_lte(self, rhs:Self) -> Self {
+            #[inline]
+            pub fn comp_lte(self, rhs: Self) -> Self {
                 !self.comp_gt(rhs)
             }
 
             /// Produces a new integer which is all ones if the first argumentis strictly less than
             /// the second argument, and all zeroes otherwise.
-            pub fn comp_lt(self, rhs:Self) -> Self {
+            #[inline]
+            pub fn comp_lt(self, rhs: Self) -> Self {
                 !self.comp_gte(rhs)
             }
-
         }
     };
 }
@@ -324,33 +335,36 @@ define_secret_signed_integer!(I128, i128, 128);
 macro_rules! define_safe_casting {
     ($from:ident, $to:ident, $to_repr:ident) => {
         impl From<$from> for $to {
-            fn from(x:$from) -> $to {
+            #[inline]
+            fn from(x: $from) -> $to {
                 $to(x.0 as $to_repr)
             }
         }
-    }
+    };
 }
 
 macro_rules! define_unsafe_casting {
     ($from:ident, $to:ident, $to_repr:ident) => {
         /// **Warning:** wrapping semantics.
         impl From<$from> for $to {
-            fn from(x:$from) -> $to {
+            #[inline]
+            fn from(x: $from) -> $to {
                 $to(x.0 as $to_repr)
             }
         }
-    }
+    };
 }
 
 macro_rules! define_signed_unsigned_casting {
     ($unsigned:ident, $unsiged_repr:ident, $signed:ident, $signed_repr:ident) => {
         /// **Warning:** wrapping semantics.
         impl From<$unsigned> for $signed {
-            fn from(x:$unsigned) -> $signed {
+            #[inline]
+            fn from(x: $unsigned) -> $signed {
                 $signed(x.0 as $signed_repr)
             }
         }
-    }
+    };
 }
 
 // Casting
