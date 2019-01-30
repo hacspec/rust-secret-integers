@@ -1,6 +1,6 @@
 [package]
 name = "secret_integers"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Denis Merigoux <denis.merigoux@gmail.com>"]
 edition = "2018"
 description = "Wrapping around Rust's integers to allow only constant-time operations"
