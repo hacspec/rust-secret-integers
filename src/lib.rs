@@ -196,6 +196,32 @@ macro_rules! define_secret_integer {
             pub fn ones() -> Self {
                 !Self::zero()
             }
+
+            pub fn from_bytes_le(bytes: &[U8]) -> Vec<$name> {
+                assert!(bytes.len() % ($bits/8) == 0);
+                bytes.chunks($bits/8).map(|chunk| {
+                    let mut chunk_raw : [u8; $bits/8] = [0u8; $bits/8];
+                    for i in 0..$bits/8 {
+                        chunk_raw[i] = U8::declassify(chunk[i]);
+                    }
+                    $name::classify(unsafe {
+                        std::mem::transmute::<[u8;$bits/8], $repr>(
+                            chunk_raw
+                        ).to_le()
+                    })
+                }).collect::<Vec<$name>>()
+            }
+
+            pub fn to_bytes_le(ints: &[$name]) -> Vec<U8> {
+                ints.iter().map(|int| {
+                    let int = $name::declassify(*int);
+                    let bytes : [u8;$bits/8] = unsafe {
+                         std::mem::transmute::<$repr, [u8;$bits/8]>(int.to_le())
+                    };
+                    let secret_bytes : Vec<U8> = bytes.iter().map(|x| U8::classify(*x)).collect();
+                    secret_bytes
+                }).flatten().collect()
+            }
         }
 
         impl From<$repr> for $name {
@@ -232,6 +258,7 @@ macro_rules! define_secret_integer {
 
         /// `Not` has bitwise semantics for integers
         define_unary_op!($name, !, Not, not);
+
     }
 }
 
