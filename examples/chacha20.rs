@@ -13,30 +13,6 @@ pub fn classify_u32s(v: &[u32]) -> Vec<U32> {
     v.iter().map(|x| U32::classify(*x)).collect()
 }
 
-pub fn u8s_to_uint32s_le(bytes: &[U8]) -> Vec<U32> {
-    bytes
-        .chunks(4)
-        .map(|chunk| {
-            U32::classify(unsafe {
-                std::mem::transmute::<[u8; 4], u32>([
-                    chunk[0].declassify(),
-                    chunk[1].declassify(),
-                    chunk[2].declassify(),
-                    chunk[3].declassify()
-                ]).to_le()
-            })
-        })
-        .collect::<Vec<U32>>()
-}
-
-pub fn u8s_from_uint32s_le(ints: &[U32]) -> Vec<U8> {
-    ints.iter().map(|int| {
-        let int = U32::declassify(*int);
-        let bytes : [u8; 4] = unsafe { std::mem::transmute::<u32, [u8;4]>(int.to_le()) };
-        let secret_bytes : Vec<U8> = bytes.iter().map(|x| U8::classify(*x)).collect();
-        secret_bytes
-    }).flatten().collect()
-}
 
 fn line(a:Index, b:Index, d:Index, s:RotVal, m: &mut State) {
     m[a] = m[a] + m[b];
@@ -69,9 +45,9 @@ const CONSTANTS: Constants = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574];
 fn chacha20_init(k:&Key, counter:U32, nonce:&Nonce) -> State {
     let mut st = [U32::classify(0u32);16];
     st[0..4].copy_from_slice(&classify_u32s(&CONSTANTS));
-    st[4..12].copy_from_slice(u8s_to_uint32s_le(k).as_slice());
+    st[4..12].copy_from_slice(U32::from_bytes_le(k).as_slice());
     st[12] = counter;
-    st[13..16].copy_from_slice(u8s_to_uint32s_le(nonce).as_slice());
+    st[13..16].copy_from_slice(U32::from_bytes_le(nonce).as_slice());
     st
 }
 
@@ -94,7 +70,7 @@ fn chacha20(k:&Key, counter:U32, nonce:&Nonce) -> State {
 fn chacha20_block(k:&Key, counter:U32, nonce:&Nonce) -> Block {
     let st = chacha20(k, counter, nonce);
     let mut block = [U8::classify(0u8);BLOCK_SIZE];
-    block.copy_from_slice(u8s_from_uint32s_le(&st).as_slice());
+    block.copy_from_slice(U32::to_bytes_le(&st).as_slice());
     block
 }
 
