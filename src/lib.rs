@@ -168,7 +168,7 @@ macro_rules! define_shift {
 macro_rules! define_secret_integer {
     ($name:ident, $repr:ty, $bits:tt) => {
         #[derive(Clone, Copy, Default)]
-        pub struct $name(pub(crate) $repr);
+        pub struct $name(pub $repr);
 
         impl $name {
             #[inline]
