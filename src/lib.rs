@@ -222,6 +222,32 @@ macro_rules! define_secret_integer {
                     secret_bytes
                 }).flatten().collect()
             }
+
+            pub fn from_bytes_be(bytes: &[U8]) -> Vec<$name> {
+                assert!(bytes.len() % ($bits/8) == 0);
+                bytes.chunks($bits/8).map(|chunk| {
+                    let mut chunk_raw : [u8; $bits/8] = [0u8; $bits/8];
+                    for i in 0..$bits/8 {
+                        chunk_raw[i] = U8::declassify(chunk[i]);
+                    }
+                    $name::classify(unsafe {
+                        std::mem::transmute::<[u8;$bits/8], $repr>(
+                            chunk_raw
+                        ).to_be()
+                    })
+                }).collect::<Vec<$name>>()
+            }
+
+            pub fn to_bytes_be(ints: &[$name]) -> Vec<U8> {
+                ints.iter().map(|int| {
+                    let int = $name::declassify(*int);
+                    let bytes : [u8;$bits/8] = unsafe {
+                         std::mem::transmute::<$repr, [u8;$bits/8]>(int.to_be())
+                    };
+                    let secret_bytes : Vec<U8> = bytes.iter().map(|x| U8::classify(*x)).collect();
+                    secret_bytes
+                }).flatten().collect()
+            }
         }
 
         impl From<$repr> for $name {
