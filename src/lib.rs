@@ -66,7 +66,7 @@
 //!
 //! fn start_cipher(plain: &mut Vec<U32>) {
 //!    for i in 0..plain.len() {
-//!      plain[i] |= plain[i] ^ IV[i].into();
+//!      plain[i] = plain[i] | (plain[i] ^ IV[i].into());
 //!    }
 //! }
 //! ```
@@ -248,6 +248,10 @@ macro_rules! define_secret_integer {
                     secret_bytes
                 }).flatten().collect()
             }
+
+            pub fn to_be_bytes(&self) -> Vec<u8> {
+                $name::declassify(*self).to_be_bytes().to_vec()
+            }
         }
 
         impl From<$repr> for $name {
@@ -285,6 +289,25 @@ macro_rules! define_secret_integer {
         /// `Not` has bitwise semantics for integers
         define_unary_op!($name, !, Not, not);
 
+        // Printing integers.
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let uint: $repr = self.declassify();
+                write!(f, "{}", uint)
+            }
+        }
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let uint: $repr = self.declassify();
+                write!(f, "{}", uint)
+            }
+        }
+        impl std::fmt::LowerHex for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let val: $repr = self.declassify();
+                write!(f, "{:x}", val)
+            }
+        }
     }
 }
 
