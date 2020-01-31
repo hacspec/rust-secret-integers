@@ -15,6 +15,7 @@ pub struct BigUint {
     data: Vec<BigDigit>,
 }
 
+#[cfg(feature = "FailExample")]
 impl BigUint {
     fn is_zero(&self) -> bool {
         self.data.is_empty()
@@ -30,6 +31,7 @@ impl BigUint {
 
 }
 
+#[cfg(feature = "FailExample")]
 // Extract bitwise digits that evenly divide BigDigit
 fn to_bitwise_digits_le(u: &BigUint, bits: usize) -> Vec<U8> {
     debug_assert!(!u.is_zero() && bits <= 8 && BITS % bits == 0);
