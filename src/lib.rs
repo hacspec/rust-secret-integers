@@ -333,7 +333,7 @@ macro_rules! define_secret_unsigned_integer {
             pub fn comp_eq(self, rhs: Self) -> Self {
                 let a = self;
                 let b = rhs;
-                let x = a | b;
+                let x = a ^ b;
                 let minus_x = -x;
                 let x_or_minus_x = x | minus_x;
                 let xnx = x_or_minus_x >> ($bits - 1);
@@ -345,7 +345,7 @@ macro_rules! define_secret_unsigned_integer {
             /// the second argument, and all zeroes otherwise.
             #[inline]
             pub fn comp_ne(self, rhs: Self) -> Self {
-                !self.comp_eq(rhs) ^ Self::ones()
+                !self.comp_eq(rhs)
             }
 
             /// Produces a new integer which is all ones if the first argument is greater than or
@@ -355,7 +355,7 @@ macro_rules! define_secret_unsigned_integer {
             pub fn comp_gte(self, rhs: Self) -> Self {
                 let x = self;
                 let y = rhs;
-                let x_xor_y = x | y;
+                let x_xor_y = x ^ y;
                 let x_sub_y = x - y;
                 let x_sub_y_xor_y = x_sub_y ^ y;
                 let q = x_xor_y ^ x_sub_y_xor_y;
@@ -586,3 +586,64 @@ define_signed_unsigned_casting!(U64, u64, I64, i64);
 define_signed_unsigned_casting!(U32, u32, I32, i32);
 define_signed_unsigned_casting!(U16, u16, I16, i16);
 define_signed_unsigned_casting!(U8, u8, I8, i8);
+
+macro_rules! define_tests {
+    ($modname:ident, $type:ident) => {
+        #[cfg(test)]
+        mod $modname {
+            use crate::*;
+
+            #[test]
+            fn test_comp_eq_ok() {
+                let a = $type::from(3);
+                let b = $type::from(3);
+                let eq = $type::comp_eq(a, b);
+                assert_eq!(eq.declassify(), $type::ones().declassify());
+            }
+
+            #[test]
+            fn test_comp_eq_fail() {
+                let a = $type::from(3);
+                let b = $type::from(42);
+                let eq = $type::comp_eq(a, b);
+                assert_eq!(eq.declassify(), $type::zero().declassify());
+            }
+
+            #[test]
+            fn test_comp_neq_ok() {
+                let a = $type::from(3);
+                let b = $type::from(42);
+                let eq = $type::comp_ne(a, b);
+                assert_eq!(eq.declassify(), $type::ones().declassify());
+            }
+
+            #[test]
+            fn test_comp_neq_fail() {
+                let a = $type::from(3);
+                let b = $type::from(3);
+                let eq = $type::comp_ne(a, b);
+                assert_eq!(eq.declassify(), $type::zero().declassify());
+            }
+
+            #[test]
+            fn test_comp_gte_ok() {
+                let a = $type::from(42);
+                let b = $type::from(3);
+                let eq = $type::comp_gte(a, b);
+                assert_eq!(eq.declassify(), $type::ones().declassify());
+            }
+
+            #[test]
+            fn test_comp_gte_fail() {
+                let a = $type::from(3);
+                let b = $type::from(42);
+                let eq = $type::comp_gte(a, b);
+                assert_eq!(eq.declassify(), $type::zero().declassify());
+            }
+        }
+    };
+}
+
+define_tests!(tests_u8, U8);
+define_tests!(tests_u32, U32);
+define_tests!(tests_u64, U64);

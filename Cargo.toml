@@ -17,7 +17,3 @@ crate-type = ["staticlib"]
 [[example]]
 name = "chacha20"
 crate-type = ["staticlib"]
-
-[[example]]
-name = "biguint"
-crate-type = ["staticlib"]
