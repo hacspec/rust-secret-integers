@@ -588,6 +588,8 @@ define_signed_unsigned_casting!(U16, u16, I16, i16);
 define_signed_unsigned_casting!(U8, u8, I8, i8);
 
 macro_rules! define_tests {
+    // Note that the u8 here is necessary because the integers get interpreted
+    // as i32 on Linux otherwise.
     ($modname:ident, $type:ident) => {
         #[cfg(test)]
         mod $modname {
@@ -595,48 +597,48 @@ macro_rules! define_tests {
 
             #[test]
             fn test_comp_eq_ok() {
-                let a = $type::from(3);
-                let b = $type::from(3);
+                let a = $type::from(3u8);
+                let b = $type::from(3u8);
                 let eq = $type::comp_eq(a, b);
                 assert_eq!(eq.declassify(), $type::ones().declassify());
             }
 
             #[test]
             fn test_comp_eq_fail() {
-                let a = $type::from(3);
-                let b = $type::from(42);
+                let a = $type::from(3u8);
+                let b = $type::from(42u8);
                 let eq = $type::comp_eq(a, b);
                 assert_eq!(eq.declassify(), $type::zero().declassify());
             }
 
             #[test]
             fn test_comp_neq_ok() {
-                let a = $type::from(3);
-                let b = $type::from(42);
+                let a = $type::from(3u8);
+                let b = $type::from(42u8);
                 let eq = $type::comp_ne(a, b);
                 assert_eq!(eq.declassify(), $type::ones().declassify());
             }
 
             #[test]
             fn test_comp_neq_fail() {
-                let a = $type::from(3);
-                let b = $type::from(3);
+                let a = $type::from(3u8);
+                let b = $type::from(3u8);
                 let eq = $type::comp_ne(a, b);
                 assert_eq!(eq.declassify(), $type::zero().declassify());
             }
 
             #[test]
             fn test_comp_gte_ok() {
-                let a = $type::from(42);
-                let b = $type::from(3);
+                let a = $type::from(42u8);
+                let b = $type::from(3u8);
                 let eq = $type::comp_gte(a, b);
                 assert_eq!(eq.declassify(), $type::ones().declassify());
             }
 
             #[test]
             fn test_comp_gte_fail() {
-                let a = $type::from(3);
-                let b = $type::from(42);
+                let a = $type::from(3u8);
+                let b = $type::from(42u8);
                 let eq = $type::comp_gte(a, b);
                 assert_eq!(eq.declassify(), $type::zero().declassify());
             }
