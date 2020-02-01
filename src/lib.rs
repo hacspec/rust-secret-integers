@@ -305,7 +305,7 @@ macro_rules! define_secret_integer {
         impl std::fmt::LowerHex for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 let val: $repr = self.declassify();
-                write!(f, "{:x}", val)
+                std::fmt::LowerHex::fmt(&val, f)
             }
         }
     }
