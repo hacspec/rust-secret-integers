@@ -432,6 +432,7 @@ macro_rules! define_usize_casting {
 
 macro_rules! define_Uu_casting {
     ($from:ident, $to:ident) => {
+        /// **Warning:** conversion can be lossy!
         impl From<$from> for $to {
             #[inline]
             fn from(x: $from) -> $to {
@@ -508,6 +509,8 @@ define_Uu_casting!(U8, u16);
 define_Uu_casting!(U8, u32);
 define_Uu_casting!(U8, u64);
 define_Uu_casting!(U8, u128);
+define_Uu_casting!(U8, usize);
+define_usize_casting!(usize, U8, u8);
 
 // U16 <-> u
 define_Uu_casting!(U16, u16);
