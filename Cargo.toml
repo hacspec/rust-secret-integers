@@ -9,6 +9,8 @@ repository = "https://github.com/denismerigoux/rust-secret-integers"
 keywords = ["secret", "constant-time"]
 readme = "README.md"
 
+[dependencies]
+subtle = { version = "2.2.2", optional = true }
 
 [[example]]
 name = "dalek"
