@@ -666,7 +666,7 @@ impl Into<subtle::Choice> for U8 {
 impl From<subtle::Choice> for U8 {
     #[inline]
     fn from(choice: subtle::Choice) -> Self {
-        U8((!choice).unwrap_u8()).comp_eq(U8::zero())
+        U8((choice).unwrap_u8()).comp_eq(U8::one())
     }
 }
 
