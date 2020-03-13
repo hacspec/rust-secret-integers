@@ -550,7 +550,6 @@ define_uU_casting!(u32, U128, u128);
 define_uU_casting!(u64, U128, u128);
 define_usize_casting!(usize, U128, u128);
 
-
 // U16 <-> Un{n < 16}
 define_safe_casting!(U8, U16, u16);
 define_unsafe_casting!(U16, U8, u8);
@@ -652,3 +651,52 @@ macro_rules! define_tests {
 define_tests!(tests_u8, U8);
 define_tests!(tests_u32, U32);
 define_tests!(tests_u64, U64);
+
+// Optional conversions for `subtle::Choice`, enabled via the "subtle" feature flag
+#[cfg(feature = "subtle")]
+impl Into<subtle::Choice> for U8 {
+    #[inline]
+    fn into(self) -> subtle::Choice {
+        let mask = 0b00000001u8;
+        subtle::Choice::from(self.0 & mask)
+    }
+}
+
+#[cfg(feature = "subtle")]
+impl From<subtle::Choice> for U8 {
+    #[inline]
+    fn from(choice: subtle::Choice) -> Self {
+        U8((choice).unwrap_u8()).comp_eq(U8::one())
+    }
+}
+
+#[cfg(all(test, feature = "subtle"))]
+mod subtle_test {
+    use super::U8;
+    #[test]
+    fn test_subtle_u8() {
+        let forty_two = U8::classify(42);
+        let forty_one = U8::classify(41);
+
+        let equal: subtle::Choice = forty_two.comp_eq(forty_two).into();
+        assert!(bool::from(equal));
+        assert_eq!(equal.unwrap_u8(), 1);
+
+        let not_equal: subtle::Choice = forty_two.comp_eq(forty_one).into();
+        assert!(!bool::from(not_equal));
+        assert_eq!(not_equal.unwrap_u8(), 0);
+
+        // Test round trips
+        let subtle_true: subtle::Choice = 1u8.into();
+        let secret_true: U8 = subtle_true.into();
+        let subtle_true: subtle::Choice = secret_true.into();
+        assert!(bool::from(subtle_true));
+        assert_eq!(subtle_true.unwrap_u8(), 1);
+
+        let subtle_false: subtle::Choice = 0u8.into();
+        let secret_false: U8 = subtle_false.into();
+        let subtle_false: subtle::Choice = secret_false.into();
+        assert!(!bool::from(subtle_false));
+        assert_eq!(subtle_false.unwrap_u8(), 0);
+    }
+}
